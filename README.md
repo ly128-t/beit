@@ -1,12 +1,8 @@
-# beit
-1.[visual studio install]
 
-2.[build opencv]
+1.visual studio install
 
-[precoditon]
--- install git
--- install Visual Studio 17 2022
--- install cmake 
+2.build opencv
+install git,Visual Studio 17 2022,cmake 
 
 [step 1]
 git clone https://github.com/opencv/opencv
@@ -25,7 +21,7 @@ you should find opencv_core4100.dll,opencv_imgcodecs4100.dll,opencv_imgproc4100.
 
 
 
-3.[app step]
+3.app step
 1. cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Release
 2. open beit.sln with visual studio. Select Release/ARM64. Then Build-build solution
 3. Copy follow file to Release folder:
