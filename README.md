@@ -14,28 +14,20 @@ Note: Contributions are welcome. Please ensure thorough testing before deploying
 This guide helps developers setup C++ environment for using QAI AppBuilder to run sample code on Windows on Snapdragon (WoS) platforms.
 
 ## 1.Install Visual Studio 
-You should install [Visual Studio 2022 or higher](https://visualstudio.microsoft.com/vs/). 
-###
-During the installation process, you will be asked to choose the workloads you want and customize your installation. At a minimum, select Desktop development with C++.
+You should install [Visual Studio 2022 or higher](https://visualstudio.microsoft.com/vs/).
+During the installation process, you will be asked to choose the workloads you want and customize your installation. 
+**At a minimum, selmake sure to check：**
+* **Desktop development with C++**.
 
 
-To build native Windows Applications using the LLVM toolchain in Visual Studio, you need to install additional components.
-
-<!--
-In the installer, select the Individual components tab. Enter clang in the search bar.Check:
-✅ LLVM compiler toolchain
-✅ MSBuild support for LLVM
--->
 ## 2.Build OpenCV
-
-### 2.1Prerequisites
-
+### 2.1 Prerequisites
 - Visual Studio 2022 with C++ Desktop Development tools
 - CMake
 - Git
 
-### 2.2Steps
-
+### 2.2 Setup OpenCV
+Run following commands in Windows terminal:
 ```bash
 # Clone the OpenCV repository
 git clone https://github.com/opencv/opencv
@@ -53,50 +45,151 @@ cmake -S .. -G "Visual Studio 17 2022" -A ARM64 -DCMAKE_BUILD_TYPE=Release -DBUI
 
 # Build the project
 cmake --build . --config Release
+cmake --build . --target INSTALL --config Release
 ```
+The OpenCV DLL files can be found at:
+```
+C:\path\to\opencv\build_msvc\install\ARM64\vc17\bin
+```
+## 3.Install Dependencies
+### 3.1 Setup vcpkg
 
-## 3.Build App
-Install Dependencies：
-vcpkg，xtensor
-
-### Set Up vcpkg
-
-#### 1. Clone the vcpkg Repository
+#### 1.Clone the vcpkg Repository
 
 ```bash
 git clone https://github.com/microsoft/vcpkg.git
-option1：
 cd vckg
 .\bootstrap-vcpkg.bat
-
-option2：
-./bootstrap-vcpkg.sh
-.\vcpkg integrate install
 ```
-#### Set Environment Variables (Recommended)
-To make vcpkg easier to use and integrate with Visual Studio:
+#### 2.Add to PATH
+Add the full path to the vcpkg directory (e.g., C:\vcpkg) to your system PATH so you can run vcpkg from any terminal.
 
-##### Add to PATH
-Add the full path to the vcpkg directory (e.g., C:\vcpkg) to your system PATH so you can run vcpkg from any terminal.Reboot the computer.
-
-###### Set Up xtonsor
-
+### 3.2 Set up xtensor
+Run below command in Windows terminal:
+```
 vcpkg install xtensor
-#### Configure Visual Studio Project for OpenCV
-Select Project from the top menu and click on TestOpenCV properties.
-Edit Include directories, Library directories, and Additional dependencies as shown in the images below, and then click OK.
+```
+* If the download is too slow, you can download via the link.Put all the downloaded files in the the vcpkg directory (e.g., C:\vcpkg\dowloads).Then run the command again.
+### 3.2 Configure Visual Studio Project for OpenCV
+
+##### 1.Configure Include Directories
+
+1. From the top menu in Visual Studio, select **Project →  Properties**.
+2. Navigate to:
+
+   ```
+   Configuration Properties → C/C++ → General → Additional Include Directories
+   ```
+3. Add the following path:
+   ```
+   C:\path\to\opencv\build_msvc\install\include
+   C:\path\to\Beit\3rd\QAI_AppBuilder-win_arm64-QNN2.34.0-Release\include
+   ```
 ![ Additional dependencies](https://learn.arm.com/learning-paths/laptops-and-desktops/win-opencv/msvc_include_dir.png)
 
 
-1. Run below commands in Windows terminal:
-```bash
-   cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Release
+##### 2. Set Library Directories
+
+Go to:
 ```
-2. Open beit.sln with Visual Studio. Select Release and ARM64 as the build configuration. Then go to Build > Build Solution.
-If beit.sln does not exist, you can create a new Visual Studio solution manually and add the necessary source files and CMake project.
-3. Copy follow file to Release folder:
-3rd\opencv_core4100.dll
-3rd\opencv_imgcodecs4100.dll
-3rd\opencv_imgproc4100.dll
+Configuration Properties → Linker → General → Additional Library Directories
+```
+Add:
+```
+C:\path\to\opencv\build_msvc\install\ARM64\vc17\lib
+C:\path\to\Beit\3rd\QAI_AppBuilder-win_arm64-QNN2.34.0-Release
+```
+
+
+##### 3. Set Additional Dependencies
+
+Go to:
+```
+Configuration Properties → Linker → Input → Additional Dependencies
+```
+Add the libraries you need:
+```
+opencv_core4100.lib，opencv_imgcodecs4100.lib，opencv_imgproc4100.lib,libappbuilder.lib
+```
+
+##### 4. Add DLL Path to System Environment Variable
+
+Add the directory containing the `.dll` files to your system `PATH` environment variable, for example:
+```
+C:\path\to\opencv\build_msvc\install\ARM64\vc17\bin
+```
+
+ Click **OK** to apply the changes.
+
+
+### 4.Run Application
+#### Step 1: Set Up CMakeLists.txt and Source Code
+
+Ensure your beit directory contains:
+* CMakeLists.txt file (configured as shown below)
+* beit.cpp and any additional source files
+* Correct **DLL paths, image paths, and other hardcoded paths** updated inside beit.cpp
+  
+##### Edit CMakeLists.txt — Update OpenCV Paths
+Make sure to modify the following path settings in your CMakeLists.txt file to match your local environment:
+```
+# ❗ Replace these with the actual paths where your OpenCV is installed:
+set(Xtensor_DIR            "C:/vcpkg/installed/arm64-windows/share/xtensor")
+set(Xtl_DIR                "C:/vcpkg/installed/arm64-windows/share/xtl")
+set(OpenCV_INCLUDE_DIRS    "C:/audio/opencv/opencv/include")
+set(OpenCV_BIN_DIRS        "C:/audio/opencv/opencv/build_msvc/b05/bin/Release")
+set(OpenCV_LIBRARY_DIRS    "C:/audio/opencv/opencv/build_msvc/b05/lib/Release")
+```
+* These paths configure the include directories, DLL binaries, and static library locations for OpenCV and Xtensor. If your setup differs, be sure to update accordingly.
+
+###### Edit beit.cpp — Update Model and DLL Paths
+Inside your beit.cpp file, modify the hardcoded paths to match the location of your model and runtime libraries. For example:
+```
+// ❗ Update these paths to reflect your actual file locations
+std::string model_path  = "C:/test/beit/model/beit-beit-qualcomm_snapdragon_x_elite-float.bin";
+std::string backendLib  = "C:/test/beit/qai_libs_2.34/QnnHtp.dll";
+std::string systemLib   = "C:/test/beit/qai_libs_2.34/QnnSystem.dll";
+std::string image_path  = "C:/test/beit/dog2.jpg";
+std::string json_path   = "C:/test/beit/imagenet_labels.json";
+```
+* It's recommended to eventually replace absolute paths with relative paths or configuration arguments to improve portability across machines.
+
+#####  Build the Project with CMake 
+In the Windows terminal, run the following command from the project root to configure the build:
+```bash
+cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Release
+```
+
+#### Step 2: Build the Project in Visual Studio
+
+1. Open beit.sln in Visual Studio.
+2. Set the build configuration to Release and ARM64.
+3. Go to Build > Build Solution
+   
+* If beit.sln does not exist, you can manually create a new Visual Studio solution. Please ensure that the solution is named beit.
+* Otherwise, if you wish to use a different name for your solution or executable, you must also modify all occurrences of beit in the CMakeLists.txt file to match your chosen name. This includes the project(beit), add_executable(beit ...), and target_link_libraries(beit ...) entries.
+
+
+#### Step 3: Copy Required DLLs to Release Folder
+After building, copy the following DLL files to the Release/ directory:
+```
+path\to\opencv\build_msvc\install\ARM64\vc17\bin\opencv_core4100.dll
+path\to\opencv\build_msvc\install\ARM64\vc17\bin\opencv_imgcodecs4100.dll
+path\to\opencv\build_msvc\install\ARM64\vc17\bin\opencv_imgproc4100.dll
 3rd\QAI_AppBuilder-win_arm64-QNN2.34.0-Release\libappbuilder.dll
-4. cd Release and run beit.exe
+```
+#### Step 4: Run the Application
+In the Windows terminal, navigate to the Release folder and run:
+```
+cd Release
+./beit.exe
+```
+#### Step 5: Verifying Successful Execution
+If the service prints output similar to the following, it indicates that beit.exe has run successfully:
+```
+"Miniature Poodle",: 62.0111%
+"Toy Poodle",: 28.6134%
+"Standard Poodle",: 0.724766%
+"Yorkshire Terrier",: 0.200868%
+"Norwich Terrier",: 0.128179%
+```
