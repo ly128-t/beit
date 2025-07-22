@@ -211,3 +211,12 @@ If the service prints output similar to the following, it indicates that beit.ex
 "Yorkshire Terrier",: 0.200868%
 "Norwich Terrier",: 0.128179%
 ```
+
+test
+```
+add_custom_command(TARGET beit POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_SOURCE_DIR}/3rd/bin/libappbuilder.dll"
+    $<TARGET_FILE_DIR:beit>
+)
+```
