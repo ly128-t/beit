@@ -10,12 +10,14 @@
 This software is provided “as is,” without any express or implied warranties. The authors and contributors shall not be held liable for any damages arising from its use. The code may be incomplete or insufficiently tested. Users are solely responsible for evaluating its suitability and assume all associated risks.
 Note: Contributions are welcome. Please ensure thorough testing before deploying in critical systems.
 
-
 ## Introduction
-This guide helps developers setup C++ environment for using QAI AppBuilder to run sample code on Windows on Snapdragon (WoS) platforms.
+This guide helps developers setup C++ environment for using QAI AppBuilder to run sample code on Windows on Snapdragon (WoS) platforms.You should install [Visual Studio 2022 or higher](https://visualstudio.microsoft.com/vs/) ,[Cmake](https://cmake.org/download/) and [Git](https://git-scm.com/downloads/win).
+During the  Visual Studio installation process, you will be asked to choose the workloads you want and customize your installation. 
+**At a minimum, selmake sure to check：**
+* **Desktop development with C++**.
 
 ##  1.File Download & Setup Instructions
-First, create a new empty Visual Studio project named **beit**. Inside the beit/ directory, create a folder named **3rd/**.
+First,  Create a new folder named beit. Inside the beit/ directory, create a folder named **3rd/**.
 The final project structure should look like this:
 ```plaintext
 beit/
@@ -70,8 +72,8 @@ Run below command in Windows terminal:
 python python\beit\beit.py
 ```
 Copy the following files into your local beit/ directory:
-* model/ folder (contains the BEIT model files)
-* input.jpg (sample image for inference)
+* **model/** folder (contains the BEIT model files)
+* **input.jpg** (sample image for inference)
 
 #### Step 4: Download QAI_AppBuilder
 
@@ -97,7 +99,7 @@ cd vcpkg
 #### 2.Add to PATH
 Add the full path to the vcpkg directory (e.g., C:\vcpkg) to your system PATH so you can run vcpkg from any terminal.
 
-### 2.2 Set up xtensor
+### 2.2 Setup xtensor
 Run below command in Windows terminal:
 ```
 vcpkg install xtensor
@@ -105,14 +107,41 @@ vcpkg install xtensor
 * If the download is too slow, you can download via the link.Put all the downloaded files in the the vcpkg directory (e.g., C:\vcpkg\dowloads).Then run the command again.
 
 
-### 2.3 Set up OpenCV
-#### Option 1：
-Run below command in Windows terminal:
+### 2.3 How to build opencv4:arm64-windows
+#### Option 1：Using vcpkg
+##### 1.
+Run following commands in Windows terminal:
 ```
-vcpkg install opencv4[calib3d,directml,dshow,fs,gapi,highgui,intrinsics,jpeg,msmf,png,quirc,thread,tiff,webp,win32ui]:arm64-windows
+vcpkg install opencv4[core,win32ui,webp,tiff,thread,quirc,png,jpeg,intrinsics,highgui,gapi,fs,dshow,calib3d]:arm64-windows
+```
+##### 2.
+Go to the C:\vcpkg\ports\opencv4\ directory and open the **profile.cmake** file.
+After line 348, add the following line:
+```
+-DCPU_BASELINE=NEON
+```
+So that the section looks like this:
+```
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        ###### Verify that required components and only those are enabled
+        -DENABLE_CONFIG_VERIFICATION=ON
+        ###### opencv cpu recognition is broken, always using host and not target: here we bypass that
+        -DOPENCV_SKIP_SYSTEM_PROCESSOR_DETECTION=TRUE
+        -DAARCH64=${TARGET_IS_AARCH64}
+        -DX86_64=${TARGET_IS_X86_64}
+        -DX86=${TARGET_IS_X86}
+        -DCPU_BASELINE=NEON        # <-- NEWLY ADDED LINE (IMPORTANT)
+
+```
+##### 3.
+Then run below command in Windows terminal:
+```
+vcpkg install opencv[core,calib3d,directml,dshow,fs,gapi,highgui,intrinsics,jpeg,msmf,png,quirc,thread,tiff,webp,win32ui]:arm64-windows --editable
 ```
 
-#### Option 2：
+#### Option 2：Using github
 Run following commands in Windows terminal:
 ```bash
 # Clone the OpenCV repository
@@ -140,7 +169,77 @@ If you encounter the following error during compilation:
 ```
 error C2664: “__n64 __uint64x1_t_to_n64(uint64x1_t)”: cannot convert argument 1 from “uint16x4_t” to “uint64x1_t”
 ```
-Then download wchar.h and replace the original one located at C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\wchar.h.
+前往 C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\wchar.h.然后编辑文件：
+可以先copy:
+```
+        unsigned long Index = 0;
+        wchar_t const* S = _S;
+```
+
+1.226行：
+```
+    #if !defined(_M_CEE)
+
+        unsigned long Index = 0;
+        wchar_t const* S = _S;
+
+    #if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(_M_HYBRID_X86_ARM64)
+```
+替换成
+```
+    #if !defined(_M_CEE)
+    #if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(_M_HYBRID_X86_ARM64)
+        unsigned long Index = 0;
+        wchar_t const* S = _S;
+```
+
+268行：
+```
+  #elif defined(_M_IX86) || defined(_M_X64) 
+  #if !defined(__clang__) || defined(__AVX2__)
+```
+替换成
+```
+  #elif defined(_M_IX86) || defined(_M_X64)
+        unsigned long Index = 0;
+        wchar_t const* S = _S; 
+  #if !defined(__clang__) || defined(__AVX2__)
+```
+
+349行
+```
+    #if !defined(_M_CEE)
+
+        unsigned long Index = 0;
+        wchar_t const* S1 = _S1;
+        wchar_t const* S2 = _S2;
+
+    #if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(_M_HYBRID_X86_ARM64)
+```
+替换成
+```
+    #if !defined(_M_CEE)
+    #if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(_M_HYBRID_X86_ARM64)
+        unsigned long Index = 0;
+        wchar_t const* S1 = _S1;
+        wchar_t const* S2 = _S2;
+```
+392行：
+```
+    #elif defined(_M_IX86) || defined(_M_X64)
+    #if !defined(__clang__) || defined(__AVX2__)
+```
+替换成
+```
+    #elif defined(_M_IX86) || defined(_M_X64)
+        unsigned long Index = 0;
+        wchar_t const* S1 = _S1;
+        wchar_t const* S2 = _S2;
+    #if !defined(__clang__) || defined(__AVX2__)
+```
+
+
+
 
 ### 3.Run Application
 #### Step 1: Setup CMakeLists.txt and Source Code
@@ -154,22 +253,19 @@ Ensure your beit directory contains:
 Make sure to modify the following path settings in your CMakeLists.txt file to match your local environment:
 ```
 # ❗ Replace these with the actual paths where your OpenCV is installed:
-set(Xtensor_DIR            "C:/vcpkg/installed/arm64-windows/share/xtensor")
-set(Xtl_DIR                "C:/vcpkg/installed/arm64-windows/share/xtl")
-set(OpenCV_INCLUDE_DIRS    "C:/audio/opencv/opencv/include")
-set(OpenCV_BIN_DIRS        "C:/audio/opencv/opencv/build_msvc/b05/bin/Release")
-set(OpenCV_LIBRARY_DIRS    "C:/audio/opencv/opencv/build_msvc/b05/lib/Release")
+set(OpenCV_DIR "C:/vcpkg/installed/arm64-windows/share/opencv4")
+set(APPBUILDER_DIR "${CMAKE_SOURCE_DIR}/3rd/QAI_AppBuilder-win_arm64-QNN2.34.0-Release")
+set(APPBUILDER_DLL "${APPBUILDER_DIR}/libappbuilder.dll")
 ```
 * These paths configure the include directories, DLL binaries, and static library locations for OpenCV and Xtensor. If your setup differs, be sure to update accordingly.
-* The OpenCV DLL files can be found at:
-```
-C:\path\to\opencv\build_msvc\install\ARM64\vc17\bin
-```
-* The OpenCV lib files can be found at:
-```
-C:\path\to\opencv\build_msvc\install\ARM64\vc17\lib
-```
-
+* If OpenCV is installed via vcpkg, then set:
+  ```
+  set(OpenCV_DIR "path/to/vcpkg/installed/arm64-windows/share/opencv4")
+   ```
+  If OpenCV is installed via GitHub (manual build), then set:
+  ```
+  set(OpenCV_DIR "path/to/opencv/build_msvc")
+  ```
 ###### Edit beit.cpp — Update Model and DLL Paths
 Inside your beit.cpp file, modify the hardcoded paths to match the location of your model and runtime libraries. For example:
 ```
@@ -186,23 +282,17 @@ std::string json_path   = "C:/test/beit/imagenet_labels.json";
 In the Windows terminal, run the following command from the project root to configure the build:
 ```bash
 cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
 ```
-
-#### Step 2: Copy Required DLLs to Release Folder
-After building, copy the following DLL files to the **Release/** directory:
-```
-3rd\QAI_AppBuilder-win_arm64-QNN2.34.0-Release\libappbuilder.dll
-```
-
-
-#### Step 4: Run the Application
+After running this command, a file named beit.sln will appear in the directory.
+#### Step 2: Build the Application
+Open beit.sln with visual studio. Select Release/ARM64. Then Build-build solution
+#### Step 3: Run the Application
 In the Windows terminal, navigate to the Release folder and run:
 ```
 cd Release
 ./beit.exe
 ```
-#### Step 5: Verifying Successful Execution
+#### Step 4: Verifying Successful Execution
 If the service prints output similar to the following, it indicates that beit.exe has run successfully:
 ```
 "Miniature Poodle",: 62.0111%
@@ -210,13 +300,4 @@ If the service prints output similar to the following, it indicates that beit.ex
 "Standard Poodle",: 0.724766%
 "Yorkshire Terrier",: 0.200868%
 "Norwich Terrier",: 0.128179%
-```
-
-test
-```
-add_custom_command(TARGET beit POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_SOURCE_DIR}/3rd/bin/libappbuilder.dll"
-    $<TARGET_FILE_DIR:beit>
-)
 ```
