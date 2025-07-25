@@ -22,7 +22,7 @@ The final project structure should look like this:
 ```plaintext
 beit/
 ├── 3rd/              # Third-party dependencies (e.g., QNN SDK, py3_wget)
-├── model/            # Model files (e.g., .bin, .json)
+├── models/            # Model files (e.g., .bin, .json)
 ├── qai_libs/         # QNN SDK runtime libraries (e.g., HTP backend)
 ├── beit.cpp          # C++ inference main program
 ├── input.jpg         # Sample input jpg
@@ -42,40 +42,38 @@ Run the following script to install all required dependencies and tools:
 ```
 .\1.Install_QAI_AppBuilder.bat
 ```
-#### Step 2:Launch Python Enviroment
-Activate the pre-configured Python environment:
+Then navigate to:
+```
+ai-engine-direct-helper/samples/
+```
+Copy the entire **qai_libs/** folder into your local beit/ project directory.
+
+#### Step 2: Download BEit file
+Download and organize the essential files required for BEiT model inference:
+* Model Weights (.bin): Pre-trained BEiT model file (e.g., beit-beit-qualcomm_snapdragon_x_elite-float.bin) containing learned parameters.
+* Label Mapping (imagenet_labels.txt): Maps model output indices to human-readable ImageNet class names.
+* Sample Image (input.jpg): A test image used to verify the inference pipeline.
+
+
+Open a terminal in C:\ai-hub\，and run:
 ```
 .\8.Start_PythonEnv.bat
 pip install py3-wget
 cd ../ai-engine-direct-helper/samples
 python python\beit\beit.py
 ```
-#### Step 3: Prepare Inference Resources
-Download and organize the essential files required for BEiT model inference:
-* Model Weights (.bin): Pre-trained BEiT model file (e.g., beit-beit-qualcomm_snapdragon_x_elite-float.bin) containing learned parameters.
-* Label Mapping (imagenet_labels.txt): Maps model output indices to human-readable ImageNet class names.
-* Sample Image (input.jpg): A test image used to verify the inference pipeline.
-
-Place all files in the appropriate directories under your local beit/ project folder to ensure the inference script can access them correctly.
-
-From the official sample repository:
-```
-ai-engine-direct-helper/samples/
-```
-Copy the entire **qai_libs/** folder into your local beit/ project directory.
 Then navigate to:
 ```
 ai-engine-direct-helper/samples/python/beit/
 ```
-Run below command in Windows terminal:
-```
-python python\beit\beit.py
-```
 Copy the following files into your local beit/ directory:
-* **model/** folder (contains the BEIT model files)
+* **models/** folder (contains the BEIT model and imagenet_labels.txt files)
 * **input.jpg** (sample image for inference)
 
-#### Step 4: Download QAI_AppBuilder
+Place all files in the appropriate directories under your local beit/ project folder to ensure the inference script can access them correctly.
+
+
+#### Step 3: Download QAI_AppBuilder
 
 Click here to download [QAI_AppBuilder-win_arm64-QNN2.34.0-Release](https://github.com/quic/ai-engine-direct-helper/releases/download/v2.34.0/QAI_AppBuilder-win_arm64-QNN2.34.0-Release.zip).Unzip the contents of the archive into the 3rd/ folder inside your beit/ project directory. The structure should look like:
 ```plaintext
@@ -108,14 +106,14 @@ vcpkg install xtensor
 
 
 ### 2.3 How to build opencv4:arm64-windows
-#### Option 1：Using vcpkg
+#### Using vcpkg
 ##### 1.
 Run following commands in Windows terminal:
 ```
 vcpkg install opencv4[core,win32ui,webp,tiff,thread,quirc,png,jpeg,intrinsics,highgui,gapi,fs,dshow,calib3d]:arm64-windows
 ```
 ##### 2.
-Go to the C:\vcpkg\ports\opencv4\ directory and open the **profile.cmake** file.
+Go to the C:\vcpkg\ports\opencv4\ directory and open the **portfile.cmake** file.
 After line 348, add the following line:
 ```
 -DCPU_BASELINE=NEON
@@ -133,113 +131,12 @@ vcpkg_cmake_configure(
         -DX86_64=${TARGET_IS_X86_64}
         -DX86=${TARGET_IS_X86}
         -DCPU_BASELINE=NEON        # <-- NEWLY ADDED LINE (IMPORTANT)
-
 ```
 ##### 3.
 Then run below command in Windows terminal:
 ```
-vcpkg install opencv[core,calib3d,directml,dshow,fs,gapi,highgui,intrinsics,jpeg,msmf,png,quirc,thread,tiff,webp,win32ui]:arm64-windows --editable
+vcpkg install opencv[core,calib3d,directml,dshow,fs,gapi,highgui,intrinsics,jpeg,msmf,png,quirc,thread,tiff,webp,win32ui]:arm64-windows --editable  --recurse
 ```
-
-#### Option 2：Using github
-Run following commands in Windows terminal:
-```bash
-# Clone the OpenCV repository
-git clone https://github.com/opencv/opencv
-cd opencv
-
-# Checkout the specific version
-git checkout tags/4.10.0
-
-# Create and enter the build directory
-mkdir build_msvc
-cd build_msvc
-
-# Configure the build with CMake
-cmake -S .. -G "Visual Studio 17 2022" -A ARM64 -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DBUILD_DOCS=OFF -DBUILD_opencv_world=OFF -DWITH_CUDA=OFF -DWITH_OPENCL=OFF -DWITH_OPENVINO=OFF -DWITH_TBB=OFF
-
-# Build the project
-cmake --build . --config Release
-cmake --build . --target INSTALL --config Release
-```
-
-
-**Troubleshooting: wchar.h Compilation Error** 
-If you encounter the following error during compilation:
-```
-error C2664: “__n64 __uint64x1_t_to_n64(uint64x1_t)”: cannot convert argument 1 from “uint16x4_t” to “uint64x1_t”
-```
-前往 C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\wchar.h.然后编辑文件：
-可以先copy:
-```
-        unsigned long Index = 0;
-        wchar_t const* S = _S;
-```
-
-1.226行：
-```
-    #if !defined(_M_CEE)
-
-        unsigned long Index = 0;
-        wchar_t const* S = _S;
-
-    #if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(_M_HYBRID_X86_ARM64)
-```
-替换成
-```
-    #if !defined(_M_CEE)
-    #if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(_M_HYBRID_X86_ARM64)
-        unsigned long Index = 0;
-        wchar_t const* S = _S;
-```
-
-268行：
-```
-  #elif defined(_M_IX86) || defined(_M_X64) 
-  #if !defined(__clang__) || defined(__AVX2__)
-```
-替换成
-```
-  #elif defined(_M_IX86) || defined(_M_X64)
-        unsigned long Index = 0;
-        wchar_t const* S = _S; 
-  #if !defined(__clang__) || defined(__AVX2__)
-```
-
-349行
-```
-    #if !defined(_M_CEE)
-
-        unsigned long Index = 0;
-        wchar_t const* S1 = _S1;
-        wchar_t const* S2 = _S2;
-
-    #if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(_M_HYBRID_X86_ARM64)
-```
-替换成
-```
-    #if !defined(_M_CEE)
-    #if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(_M_HYBRID_X86_ARM64)
-        unsigned long Index = 0;
-        wchar_t const* S1 = _S1;
-        wchar_t const* S2 = _S2;
-```
-392行：
-```
-    #elif defined(_M_IX86) || defined(_M_X64)
-    #if !defined(__clang__) || defined(__AVX2__)
-```
-替换成
-```
-    #elif defined(_M_IX86) || defined(_M_X64)
-        unsigned long Index = 0;
-        wchar_t const* S1 = _S1;
-        wchar_t const* S2 = _S2;
-    #if !defined(__clang__) || defined(__AVX2__)
-```
-
-
-
 
 ### 3.Run Application
 #### Step 1: Setup CMakeLists.txt and Source Code
@@ -257,7 +154,7 @@ set(OpenCV_DIR "C:/vcpkg/installed/arm64-windows/share/opencv4")
 set(APPBUILDER_DIR "${CMAKE_SOURCE_DIR}/3rd/QAI_AppBuilder-win_arm64-QNN2.34.0-Release")
 set(APPBUILDER_DLL "${APPBUILDER_DIR}/libappbuilder.dll")
 ```
-* These paths configure the include directories, DLL binaries, and static library locations for OpenCV and Xtensor. If your setup differs, be sure to update accordingly.
+* These paths configure the include directories, DLL binaries, and static library locations for OpenCV. If your setup differs, be sure to update accordingly.
 * If OpenCV is installed via vcpkg, then set:
   ```
   set(OpenCV_DIR "path/to/vcpkg/installed/arm64-windows/share/opencv4")
@@ -270,13 +167,13 @@ set(APPBUILDER_DLL "${APPBUILDER_DIR}/libappbuilder.dll")
 Inside your beit.cpp file, modify the hardcoded paths to match the location of your model and runtime libraries. For example:
 ```
 // ❗ Update these paths to reflect your actual file locations
-std::string model_path  = "C:/test/beit/model/beit-beit-qualcomm_snapdragon_x_elite-float.bin";
-std::string backendLib  = "C:/test/beit/qai_libs_2.34/QnnHtp.dll";
-std::string systemLib   = "C:/test/beit/qai_libs_2.34/QnnSystem.dll";
-std::string image_path  = "C:/test/beit/dog2.jpg";
-std::string json_path   = "C:/test/beit/imagenet_labels.json";
+std::string model_path = "../models/beit-beit-qualcomm_snapdragon_x_elite-float.bin";
+std::string  backendLib = "../qai_libs/QnnHtp.dll";
+std::string  systemLib = "../qai_libs/QnnSystem.dll";
+std::string image_path = "../input.jpg";
+std::string json_path = "../models/imagenet_labels.json";
 ```
-* It's recommended to eventually replace absolute paths with relative paths or configuration arguments to improve portability across machines.
+* These paths are currently relative. If the files are not placed in the expected directories, you can modify the paths accordingly or use absolute paths instead. This improves portability and ensures the program runs reliably across different environments.
 
 #####  Build the Project with CMake 
 In the Windows terminal, run the following command from the project root to configure the build:
